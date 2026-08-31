@@ -1,0 +1,102 @@
+// Local persistence layer. Everything reads/writes through the functions below,
+// which is the intended swap seam: replace the bodies of load()/save() with real
+// API calls (or point them at Postgres via a backend) once the database exists.
+// No other file in the app should touch localStorage directly.
+
+const PREFIX = 'tcerp:'
+export const SCHEMA_VERSION = 2
+
+export function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(PREFIX + key)
+    if (!raw) return fallback
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+export function save<T>(key: string, value: T): void {
+  localStorage.setItem(PREFIX + key, JSON.stringify(value))
+}
+
+export function getAll<T>(collection: string): T[] {
+  return load<T[]>(collection, [])
+}
+
+export function saveAll<T>(collection: string, items: T[]): void {
+  save(collection, items)
+}
+
+export function upsert<T extends { id: string }>(collection: string, item: T): T {
+  const items = getAll<T>(collection)
+  const idx = items.findIndex((i) => i.id === item.id)
+  if (idx >= 0) items[idx] = item
+  else items.push(item)
+  saveAll(collection, items)
+  return item
+}
+
+export function remove(collection: string, id: string): void {
+  const items = getAll<{ id: string }>(collection).filter((i) => i.id !== id)
+  saveAll(collection, items)
+}
+
+export function genId(prefix = 'id'): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function ensureSchemaVersion(reseed: () => void): void {
+  const current = load<number>('schema_version', 0)
+  if (current !== SCHEMA_VERSION) {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith(PREFIX))
+      .forEach((k) => localStorage.removeItem(k))
+    reseed()
+    save('schema_version', SCHEMA_VERSION)
+  }
+}
+
+export const COLLECTIONS = {
+  // platform / access
+  moduleStates: 'module_states',
+  roles: 'roles',
+  users: 'users',
+  organization: 'organization',
+  settings: 'settings',
+  auditLog: 'audit_log',
+  notifications: 'notifications',
+  session: 'session',
+  // academics
+  students: 'students',
+  guardians: 'guardians',
+  courses: 'courses',
+  subjects: 'subjects',
+  batches: 'batches',
+  enrollments: 'enrollments',
+  documents: 'documents',
+  // fees
+  feeInvoices: 'fee_invoices',
+  payments: 'payments',
+  // attendance
+  attendance: 'attendance',
+  // exams
+  exams: 'exams',
+  examResults: 'exam_results',
+  // homework + materials
+  assignments: 'assignments',
+  submissions: 'submissions',
+  materials: 'materials',
+  // timetable
+  timetable: 'timetable',
+  // communication
+  messages: 'messages',
+  // staff
+  staff: 'staff',
+  staffAttendance: 'staff_attendance',
+  // super-admin platform console
+  institutes: 'institutes',
+  subscriptions: 'subscriptions',
+  platformInvoices: 'platform_invoices',
+  supportTickets: 'support_tickets'
+} as const
