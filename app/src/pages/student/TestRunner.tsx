@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { COLLECTIONS, genId, getAll, upsert } from '../../lib/db'
 import { logAudit } from '../../lib/audit'
 import { Badge, Button, Card, EmptyState, Modal, PageHeader, StatCard } from '../../components/ui'
+import Certificate from '../../components/Certificate'
 import { pct } from '../../lib/format'
 import { grade, questionsFor, studentAttempt } from '../../lib/exam'
 import { subjectName, batchName, examRanking } from '../../lib/selectors'
@@ -31,6 +32,7 @@ export default function TestRunner() {
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [marked, setMarked] = useState<Set<string>>(new Set())
   const [confirming, setConfirming] = useState(false)
+  const [certOpen, setCertOpen] = useState(false)
   const endsAtRef = useRef<number>(Date.now() + (exam?.durationMinutes ?? 20) * 60000)
   const [remaining, setRemaining] = useState<number>((exam?.durationMinutes ?? 20) * 60)
 
@@ -98,7 +100,8 @@ export default function TestRunner() {
 
   // ---------- result view ----------
   if (attempt) {
-    const rank = examRanking(exam.id).find((r) => r.studentId === student.id)?.rank
+    const ranking = examRanking(exam.id)
+    const rank = ranking.find((r) => r.studentId === student.id)?.rank
     const accuracy = pct(attempt.correctCount, attempt.correctCount + attempt.wrongCount)
     return (
       <div>
@@ -106,9 +109,14 @@ export default function TestRunner() {
           title="Result"
           subtitle={`${exam.name} · ${subjectName(exam.subjectId)}`}
           actions={
-            <Link to="/me/tests" className="bg-slate-100 text-slate-700 text-sm font-medium rounded-lg px-4 py-2 hover:bg-slate-200">
-              Back to Mock Tests
-            </Link>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => setCertOpen(true)}>
+                🏆 Certificate
+              </Button>
+              <Link to="/me/tests" className="bg-slate-100 text-slate-700 text-sm font-medium rounded-lg px-4 py-2 hover:bg-slate-200">
+                Back to Mock Tests
+              </Link>
+            </div>
           }
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -172,6 +180,20 @@ export default function TestRunner() {
             )
           })}
         </div>
+
+        {certOpen && (
+          <Modal title="Your certificate" onClose={() => setCertOpen(false)} wide>
+            <Certificate
+              exam={exam}
+              attempt={attempt}
+              studentName={student.name}
+              batchLabel={batchName(exam.batchId)}
+              subjectLabel={subjectName(exam.subjectId)}
+              rank={rank}
+              totalRanked={ranking.length}
+            />
+          </Modal>
+        )}
       </div>
     )
   }

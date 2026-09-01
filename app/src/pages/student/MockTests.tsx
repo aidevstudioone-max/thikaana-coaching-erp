@@ -1,16 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { COLLECTIONS, getAll } from '../../lib/db'
-import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../../components/ui'
+import { Badge, Button, Card, EmptyState, Modal, PageHeader, StatCard } from '../../components/ui'
+import Certificate from '../../components/Certificate'
 import { pct } from '../../lib/format'
 import { questionsFor, studentAttempt } from '../../lib/exam'
 import { mockLeaderboard } from '../../lib/leaderboard'
-import { subjectName } from '../../lib/selectors'
+import { batchName, examRanking, subjectName } from '../../lib/selectors'
 import { useMyStudent } from '../../lib/portal'
-import type { Exam } from '../../lib/types'
+import type { Exam, ExamAttempt } from '../../lib/types'
 
 export default function MockTests() {
   const { student } = useMyStudent()
+  const [cert, setCert] = useState<{ exam: Exam; attempt: ExamAttempt } | null>(null)
   if (!student) return <EmptyState title="No student linked to this login" />
 
   const online = getAll<Exam>(COLLECTIONS.exams)
@@ -112,6 +114,9 @@ export default function MockTests() {
                   <span className={`text-sm font-semibold ${p >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
                     {attempt!.score} / {exam.maxMarks} ({p}%)
                   </span>
+                  <button className="text-xs text-brand-600 font-medium" onClick={() => setCert({ exam, attempt: attempt! })}>
+                    🏆 Certificate
+                  </button>
                   <Link to={`/me/tests/${exam.id}`} className="text-xs text-brand-600 font-medium">
                     Review →
                   </Link>
@@ -120,6 +125,20 @@ export default function MockTests() {
             )
           })}
         </div>
+      )}
+
+      {cert && (
+        <Modal title="Your certificate" onClose={() => setCert(null)} wide>
+          <Certificate
+            exam={cert.exam}
+            attempt={cert.attempt}
+            studentName={student.name}
+            batchLabel={batchName(cert.exam.batchId)}
+            subjectLabel={subjectName(cert.exam.subjectId)}
+            rank={examRanking(cert.exam.id).find((r) => r.studentId === student.id)?.rank}
+            totalRanked={examRanking(cert.exam.id).length}
+          />
+        </Modal>
       )}
     </div>
   )
