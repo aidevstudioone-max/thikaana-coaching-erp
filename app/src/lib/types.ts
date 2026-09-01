@@ -240,7 +240,36 @@ export interface Exam {
   date: string
   maxMarks: number
   status: 'SCHEDULED' | 'COMPLETED'
+  // OFFLINE = pen-and-paper, marks entered by a teacher.
+  // ONLINE  = students attempt an MCQ paper in the portal and it is auto-graded.
+  mode: 'OFFLINE' | 'ONLINE'
+  durationMinutes: number
+  negativeMarks: number // deducted per wrong answer on ONLINE tests (0 = none)
   createdAt: string
+}
+
+export interface ExamQuestion {
+  id: string
+  examId: string
+  order: number
+  text: string
+  options: string[]
+  correctIndex: number
+  marks: number
+}
+
+export interface ExamAttempt {
+  id: string
+  examId: string
+  studentId: string
+  answers: Record<string, number> // questionId -> chosen option index
+  score: number
+  correctCount: number
+  wrongCount: number
+  unattempted: number
+  startedAt: string
+  submittedAt: string
+  autoSubmitted: boolean
 }
 
 export interface ExamResult {

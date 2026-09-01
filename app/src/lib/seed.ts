@@ -5,6 +5,7 @@
 import { COLLECTIONS, genId, save, saveAll } from './db'
 import { defaultModuleStates } from './modules'
 import { DEFAULT_ROLES } from './permissions'
+import { bankFor } from './questionBank'
 import type {
   Assignment,
   AttendanceRecord,
@@ -12,6 +13,8 @@ import type {
   Course,
   Enrollment,
   Exam,
+  ExamAttempt,
+  ExamQuestion,
   ExamResult,
   FeeInvoice,
   Guardian,
@@ -363,14 +366,20 @@ export function seedAll(): void {
   })
   saveAll(COLLECTIONS.attendance, attendance)
 
-  // ---- exams + results ----
+  // ---- exams + results + online mock tests ----
   const exams: Exam[] = []
   const examResults: ExamResult[] = []
+  const examQuestions: ExamQuestion[] = []
+  const examAttempts: ExamAttempt[] = []
   const examTypes: Exam['type'][] = ['Weekly Test', 'Weekly Test', 'Mock Test', 'Monthly Test']
+  const demoStudentId = students.find((s) => s.status === 'ACTIVE')!.id
+
   batches.forEach((batch) => {
     const course = courses.find((c) => c.id === batch.courseId)!
     const roster = students.filter((s) => s.batchId === batch.id && s.status === 'ACTIVE')
-    // 2 completed + 1 scheduled
+    const courseSubjects = course.subjectIds.map((id) => subjects.find((s) => s.id === id)!)
+
+    // --- pen-and-paper tests: 2 completed + 1 upcoming ---
     for (let e = 0; e < 3; e++) {
       const scheduled = e === 2
       const subjId = pick(course.subjectIds)
@@ -384,6 +393,9 @@ export function seedAll(): void {
         subjectId: subjId,
         date: scheduled ? dateDaysAhead(int(3, 20)) : dateDaysAgo(int(6, 60)),
         maxMarks,
+        mode: 'OFFLINE',
+        durationMinutes: 0,
+        negativeMarks: 0,
         status: scheduled ? 'SCHEDULED' : 'COMPLETED',
         createdAt: isoDaysAgo(int(60, 90))
       }
@@ -402,9 +414,100 @@ export function seedAll(): void {
         })
       }
     }
+
+    // --- ONLINE mock tests: students attempt an MCQ paper in the portal ---
+    const rosterHasDemo = roster.some((s) => s.id === demoStudentId)
+    for (let o = 0; o < 2; o++) {
+      const subj = courseSubjects[o % courseSubjects.length]
+      const bank = bankFor(subj.code)
+      const qCount = Math.min(bank.length, o === 0 ? 8 : 10)
+      const perQ = 4
+      const maxMarks = qCount * perQ
+      const negative = course.category === 'Competitive' ? 1 : 0
+      const exam: Exam = {
+        id: genId('exm'),
+        name: `${batch.name} · Online ${subj.name} Mock ${o + 1}`,
+        type: 'Mock Test',
+        courseId: course.id,
+        batchId: batch.id,
+        subjectId: subj.id,
+        date: dateDaysAgo(int(1, 8)),
+        maxMarks,
+        mode: 'ONLINE',
+        durationMinutes: qCount <= 8 ? 15 : 20,
+        negativeMarks: negative,
+        status: 'SCHEDULED',
+        createdAt: isoDaysAgo(int(10, 20))
+      }
+      exams.push(exam)
+      const examQs = bank.slice(0, qCount).map((q, qi) => {
+        const eq: ExamQuestion = {
+          id: genId('eq'),
+          examId: exam.id,
+          order: qi + 1,
+          text: q.text,
+          options: q.options,
+          correctIndex: q.correct,
+          marks: perQ
+        }
+        examQuestions.push(eq)
+        return eq
+      })
+
+      roster.forEach((st) => {
+        const isDemo = st.id === demoStudentId
+        // Keep the first online test of the demo student's batch un-attempted so
+        // the demo has a live test to take; everything else gets a history.
+        if (isDemo && rosterHasDemo && o === 0) return
+        if (!isDemo && chance(0.35)) return
+        const answers: Record<string, number> = {}
+        let correct = 0
+        let wrong = 0
+        let blank = 0
+        examQs.forEach((eq) => {
+          const r = rnd()
+          if (r < 0.12) {
+            blank++
+            return
+          }
+          if (r < 0.68) {
+            answers[eq.id] = eq.correctIndex
+            correct++
+          } else {
+            answers[eq.id] = (eq.correctIndex + 1 + Math.floor(rnd() * 3)) % 4
+            wrong++
+          }
+        })
+        const score = correct * perQ - wrong * negative
+        const startedAt = new Date(new Date(exam.date).getTime() + int(1, 40) * 60000).toISOString()
+        examAttempts.push({
+          id: genId('eatt'),
+          examId: exam.id,
+          studentId: st.id,
+          answers,
+          score,
+          correctCount: correct,
+          wrongCount: wrong,
+          unattempted: blank,
+          startedAt,
+          submittedAt: new Date(new Date(startedAt).getTime() + int(6, exam.durationMinutes) * 60000).toISOString(),
+          autoSubmitted: chance(0.1)
+        })
+        examResults.push({
+          id: genId('res'),
+          examId: exam.id,
+          studentId: st.id,
+          marks: score,
+          remark:
+            score / maxMarks > 0.75 ? 'Excellent' : score / maxMarks > 0.5 ? 'Good' : score / maxMarks > 0.3 ? 'Needs work' : 'Revise this topic'
+        })
+      })
+    }
   })
   saveAll(COLLECTIONS.exams, exams)
   saveAll(COLLECTIONS.examResults, examResults)
+  saveAll(COLLECTIONS.examQuestions, examQuestions)
+  saveAll(COLLECTIONS.examAttempts, examAttempts)
 
   // ---- homework / assignments + submissions ----
   const assignments: Assignment[] = []

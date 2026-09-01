@@ -4,6 +4,7 @@ import { COLLECTIONS, getAll } from '../../lib/db'
 import { Card, EmptyState, PageHeader, StatCard, StatusBadge, currency, fmtDate } from '../../components/ui'
 import { useMyStudent } from '../../lib/portal'
 import { attendanceSummary, feeSummary, studentResults, subjectName } from '../../lib/selectors'
+import { studentAttempt } from '../../lib/exam'
 import type { Assignment, Exam, Material, Submission } from '../../lib/types'
 
 export default function StudentDashboard() {
@@ -13,7 +14,9 @@ export default function StudentDashboard() {
   const att = attendanceSummary(student.id)
   const fee = feeSummary(student.id)
   const res = studentResults(student.id)
-  const exams = getAll<Exam>(COLLECTIONS.exams).filter((e) => e.batchId === student.batchId && e.status === 'SCHEDULED')
+  const batchExams = getAll<Exam>(COLLECTIONS.exams).filter((e) => e.batchId === student.batchId)
+  const exams = batchExams.filter((e) => e.status === 'SCHEDULED' && e.mode !== 'ONLINE')
+  const mockAvailable = batchExams.filter((e) => e.mode === 'ONLINE' && !studentAttempt(e.id, student.id))
   const assignments = getAll<Assignment>(COLLECTIONS.assignments).filter((a) => a.batchId === student.batchId)
   const submissions = getAll<Submission>(COLLECTIONS.submissions).filter((s) => s.studentId === student.id)
   const pendingHw = assignments.filter((a) => !submissions.some((s) => s.assignmentId === a.id))
@@ -33,13 +36,22 @@ export default function StudentDashboard() {
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-800">Upcoming tests</h3>
+            <h3 className="font-semibold text-slate-800">Tests</h3>
             <Link to="/me/results" className="text-xs text-brand-600 font-medium">
               Results →
             </Link>
           </div>
+          {mockAvailable.length > 0 && (
+            <Link
+              to="/me/tests"
+              className="flex items-center justify-between bg-brand-50 text-brand-800 rounded-lg px-3 py-2 text-sm mb-3 hover:bg-brand-100"
+            >
+              <span>🧪 {mockAvailable.length} online mock test{mockAvailable.length > 1 ? 's' : ''} to attempt</span>
+              <span className="font-medium">Start →</span>
+            </Link>
+          )}
           {exams.length === 0 ? (
-            <p className="text-sm text-slate-400">No tests scheduled.</p>
+            <p className="text-sm text-slate-400">No pen-and-paper tests scheduled.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {exams.map((e) => (

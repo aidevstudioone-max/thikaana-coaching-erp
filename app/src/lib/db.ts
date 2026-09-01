@@ -4,7 +4,7 @@
 // No other file in the app should touch localStorage directly.
 
 const PREFIX = 'tcerp:'
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export function load<T>(key: string, fallback: T): T {
   try {
@@ -83,6 +83,8 @@ export const COLLECTIONS = {
   // exams
   exams: 'exams',
   examResults: 'exam_results',
+  examQuestions: 'exam_questions',
+  examAttempts: 'exam_attempts',
   // homework + materials
   assignments: 'assignments',
   submissions: 'submissions',

@@ -45,6 +45,8 @@ import MyAttendance from './pages/student/MyAttendance'
 import MyFees from './pages/student/MyFees'
 import MySubjects from './pages/student/MySubjects'
 import MyResults from './pages/student/MyResults'
+import MockTests from './pages/student/MockTests'
+import TestRunner from './pages/student/TestRunner'
 import MyHomework from './pages/student/MyHomework'
 import MyMaterials from './pages/student/MyMaterials'
 import MyTimetable from './pages/student/MyTimetable'
@@ -107,6 +109,8 @@ function StudentRoutes() {
       <Route path="/me/attendance" element={<Gate moduleId="attendance"><MyAttendance /></Gate>} />
       <Route path="/me/fees" element={<Gate moduleId="fees"><MyFees /></Gate>} />
       <Route path="/me/subjects" element={<MySubjects />} />
+      <Route path="/me/tests" element={<Gate moduleId="exams"><MockTests /></Gate>} />
+      <Route path="/me/tests/:examId" element={<Gate moduleId="exams"><TestRunner /></Gate>} />
       <Route path="/me/results" element={<Gate moduleId="exams"><MyResults /></Gate>} />
       <Route path="/me/homework" element={<Gate moduleId="homework"><MyHomework /></Gate>} />
       <Route path="/me/materials" element={<Gate moduleId="materials"><MyMaterials /></Gate>} />
