@@ -80,6 +80,7 @@ export const STUDENT_NAV: NavItem[] = [
   { label: 'Fees', path: '/me/fees', icon: 'Wallet', moduleId: 'fees' },
   { label: 'Subjects', path: '/me/subjects', icon: 'BookOpen', moduleId: 'students' },
   { label: 'Mock Tests', path: '/me/tests', icon: 'FileCheck2', moduleId: 'exams' },
+  { label: 'Leaderboard', path: '/me/leaderboard', icon: 'Trophy', moduleId: 'exams' },
   { label: 'Results', path: '/me/results', icon: 'ClipboardCheck', moduleId: 'exams' },
   { label: 'Homework', path: '/me/homework', icon: 'PencilLine', moduleId: 'homework' },
   { label: 'Materials', path: '/me/materials', icon: 'FolderOpen', moduleId: 'materials' },

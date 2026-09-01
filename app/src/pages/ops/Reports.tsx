@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { COLLECTIONS, getAll } from '../../lib/db'
-import { Card, PageHeader, StatCard, Table, Tabs, currency, monthKey, pct } from '../../components/ui'
+import { Avatar, Card, PageHeader, Select, StatCard, Table, Tabs, currency, monthKey, pct } from '../../components/ui'
 import { attendanceSummary, batchName, studentResults } from '../../lib/selectors'
+import { mockLeaderboard, medal, onlineExamsForBatch } from '../../lib/leaderboard'
 import type { Batch, FeeInvoice, Payment, Student } from '../../lib/types'
 
 export default function Reports() {
@@ -10,6 +11,7 @@ export default function Reports() {
   const payments = getAll<Payment>(COLLECTIONS.payments)
   const batches = getAll<Batch>(COLLECTIONS.batches)
   const [tab, setTab] = useState('Financial')
+  const [lbBatch, setLbBatch] = useState(batches[0]?.id ?? '')
 
   const monthly = useMemo(() => {
     const map = new Map<string, number>()
@@ -28,7 +30,7 @@ export default function Reports() {
   return (
     <div>
       <PageHeader title="Reports & Analytics" subtitle="Financial, student performance and coaching growth." />
-      <Tabs tabs={['Financial', 'Students', 'Growth']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Financial', 'Students', 'Growth', 'Mock Leaderboard']} active={tab} onChange={setTab} />
 
       {tab === 'Financial' && (
         <>
@@ -101,6 +103,54 @@ export default function Reports() {
               })}
             </Table>
           </Card>
+        </>
+      )}
+
+      {tab === 'Mock Leaderboard' && (
+        <>
+          <Select value={lbBatch} onChange={setLbBatch} className="max-w-[240px] mb-4">
+            {batches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </Select>
+          {(() => {
+            const board = mockLeaderboard(lbBatch)
+            const testCount = onlineExamsForBatch(lbBatch).length
+            return (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+                  <StatCard label="Online mock tests" value={String(testCount)} />
+                  <StatCard label="Students ranked" value={String(board.length)} />
+                  <StatCard label="Batch avg" value={`${board.length ? Math.round(board.reduce((s, r) => s + r.avgPct, 0) / board.length) : 0}%`} />
+                  <StatCard label="Top score" value={board.length ? `${board[0].bestPct}%` : '—'} tone="good" />
+                </div>
+                <Card>
+                  <Table columns={['Rank', 'Student', 'Tests', 'Avg %', 'Best %', 'Total']}>
+                    {board.map((r) => (
+                      <tr key={r.student.id} className={r.rank <= 3 ? 'bg-amber-50/40' : ''}>
+                        <td className="py-2.5 px-3 font-semibold text-slate-700">{medal(r.rank) || `#${r.rank}`}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={r.student.name} size={28} />
+                            <span className="font-medium text-slate-800">{r.student.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">{r.testsTaken}</td>
+                        <td className="py-2.5 px-3 font-medium">{r.avgPct}%</td>
+                        <td className="py-2.5 px-3">{r.bestPct}%</td>
+                        <td className="py-2.5 px-3 text-slate-500">
+                          {r.totalScore} / {r.totalMax}
+                        </td>
+                      </tr>
+                    ))}
+                  </Table>
+                  {board.length === 0 && <p className="text-center text-sm text-slate-400 py-8">No online mock attempts in this batch yet.</p>}
+                </Card>
+              </>
+            )
+          })()}
         </>
       )}
     </div>

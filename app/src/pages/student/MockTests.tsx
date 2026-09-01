@@ -4,6 +4,7 @@ import { COLLECTIONS, getAll } from '../../lib/db'
 import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../../components/ui'
 import { pct } from '../../lib/format'
 import { questionsFor, studentAttempt } from '../../lib/exam'
+import { mockLeaderboard } from '../../lib/leaderboard'
 import { subjectName } from '../../lib/selectors'
 import { useMyStudent } from '../../lib/portal'
 import type { Exam } from '../../lib/types'
@@ -26,10 +27,33 @@ export default function MockTests() {
   const avg = done.length
     ? Math.round(done.reduce((s, x) => s + pct(Math.max(0, x.attempt!.score), x.exam.maxMarks), 0) / done.length)
     : 0
+  const board = mockLeaderboard(student.batchId)
+  const myRank = board.find((r) => r.student.id === student.id)
 
   return (
     <div>
-      <PageHeader title="Mock Tests" subtitle="Attempt competitive-exam papers online. Auto-graded, with a full answer review." />
+      <PageHeader
+        title="Mock Tests"
+        subtitle="Attempt competitive-exam papers online. Auto-graded, with a full answer review."
+        actions={
+          <Link to="/me/leaderboard" className="bg-slate-100 text-slate-700 text-sm font-medium rounded-lg px-4 py-2 hover:bg-slate-200">
+            🏆 Leaderboard
+          </Link>
+        }
+      />
+
+      {myRank && (
+        <Link
+          to="/me/leaderboard"
+          className="flex items-center justify-between bg-brand-50 text-brand-800 rounded-lg px-4 py-2.5 text-sm mb-4 hover:bg-brand-100"
+        >
+          <span>
+            🏆 You're <span className="font-semibold">#{myRank.rank}</span> of {board.length} in your batch
+            <span className="text-brand-500"> · {myRank.avgPct}% average</span>
+          </span>
+          <span className="font-medium">Full standings →</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Available now" value={String(available.length)} tone={available.length ? 'warn' : 'default'} />
