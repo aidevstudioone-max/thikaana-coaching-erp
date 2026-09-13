@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react'
 // served from '/' so the in-app browser preview works without a path prefix.
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: mode === 'production' ? '/thikaana-coaching-erp/' : '/',
+  base: './',   // relative, so the build works at a domain root or a subpath
   server: { port: 8130 },
   build: {
     outDir: '../dist-site',
